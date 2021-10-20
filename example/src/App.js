@@ -27,19 +27,28 @@ const App = () => {
       age: 15,
       address: {
         city: ""
-      }
+      },
+      hobbies: ['a']
     }
 
     const formRequirements = {
       name: [ requirement.required() ],
       age: [ requirement.minValue(18, "You are underage") ],
-      address: { city: [ requirement.required() ] }
+      address: { city: [ requirement.required() ] },
+      hobbies: [
+        requirement.required(),
+        {
+          message: 'custom',
+          validate: () => false
+        }
+      ]
+
     };
 
     const validateForm = validateValues(formData, formRequirements)
 
 
-    console.log(JSON.stringify(validateEmail));
+    console.log(validateForm);
 
   }, [])
 

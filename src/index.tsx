@@ -2,7 +2,7 @@ import { useState } from "react"
 
 type ValidationRequirement = {
     message?: string,
-    validate: (value?: string) => boolean
+    validate: (value?: string | string[]) => boolean
 }
 
 type RequirementsSchema = { 
@@ -17,6 +17,8 @@ type ValidationResult = {
     valid: boolean, 
     errors: string[]
 }
+
+type ValueType = string | string[];
 
 type FormValidator = {
     requirements?: RequirementsSchema,
@@ -33,7 +35,7 @@ type FormValidator = {
     setRequirements: (reqs: RequirementsSchema) => void,
     addRequirements: (reqs: RequirementsSchema) => void,
 
-    validateValue: (value: string, requirements: ValidationRequirement[]) => ValidationResult,
+    validateValue: (value: ValueType, requirements: ValidationRequirement[]) => ValidationResult,
     validateValues: ( values: ValuesSchema ) => { 
         valid: boolean,
         result: { [key: string]: ValidationResult }
@@ -47,7 +49,7 @@ export const useReactiveFormValidator = (requirements?: RequirementsSchema): For
         useState<RequirementsSchema | undefined>(requirements);
 
     
-    const validateValue = (value: string, requirements: ValidationRequirement[]) => {
+    const validateValue = (value: ValueType, requirements: ValidationRequirement[]) => {
         const errors: string[] = [];
         requirements.forEach( v => {
             const invalid = !v.validate(value);
@@ -75,7 +77,7 @@ export const useReactiveFormValidator = (requirements?: RequirementsSchema): For
         const keyValues = Object.entries(values);
         keyValues.forEach( ([key, value]) => {                        
             //Nested
-            if(typeof value === 'object' && value !== null){
+            if(typeof value === 'object' && value !== null && !Array.isArray(value)){
                 const result = validateValues(value, requirementsSet[key] as RequirementsSchema);
                 if(result && !result.valid)validForm = false;                
 
@@ -85,7 +87,7 @@ export const useReactiveFormValidator = (requirements?: RequirementsSchema): For
                 }
             } else {
                 const requirements = requirementsSet[key] as ValidationRequirement[];
-                const result = requirements ? validateValue(value as string, requirements) : {valid: true};
+                const result = requirements ? validateValue(value, requirements) : {valid: true};
                 if(!result.valid)validForm = false;                
 
                 results = {
@@ -103,39 +105,42 @@ export const useReactiveFormValidator = (requirements?: RequirementsSchema): For
     const requirement = {
         required : (message?: string) => ({
             message: message || 'Required',
-            validate: (value?: string) => !value ? false : true
+            validate: (value?: ValueType) => {
+                const condition = Array.isArray(value) ? value.length > 0 : !!value;
+                return condition;
+            }
         }),    
         email : (message?: string) => ({
             message: message || 'Invalid Email',
-            validate: (value?: string) => {
+            validate: (value?: ValueType) => {
                 const re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-                return !value ? true : re.test(value)
+                return !value ? true : re.test(value as string)
             }
         }),    
         minValue : (condition: number, message?: string) => ({
             message: message || `Minimum Value (${condition})`,
             condition,
-            validate: (value?: string) => !value ? true : parseInt(value) >= condition
+            validate: (value?: ValueType) => !value ? true : parseInt(value as string) >= condition
         }),    
         maxValue : (condition: number, message?: string) => ({
             message: message || `Maximum Value (${condition})`,
             condition,
-            validate: (value?: string) => !value ? true : parseInt(value) <= condition
+            validate: (value?: ValueType) => !value ? true : parseInt(value as string) <= condition
         }),        
         minCharacter : (condition: number, message?: string) => ({
             message: message || `Minimum Character (${condition})`,
             condition,
-            validate: (value?: string) => !value ? true : value.length >= condition
+            validate: (value?: ValueType) => !value ? true : value.length >= condition
         }),    
         maxCharacter : (condition: number, message?: string) => ({
             message: message || `Maximum Character (${condition})`,
             condition,
-            validate: (value?: string) => !value ? true : value.length <= condition
+            validate: (value?: ValueType) => !value ? true : value.length <= condition
         }),    
         pattern : (condition: any, message?: string) => ({
             message: message || `Invalid Pattern`,
             condition,
-            validate: (value?: string) => !value ? true : condition.test(value)
+            validate: (value?: ValueType) => !value ? true : condition.test(value)
         })
     }
 
